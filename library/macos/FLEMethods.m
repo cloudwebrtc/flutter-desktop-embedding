@@ -26,6 +26,10 @@
   return self;
 }
 
+-(NSString *) debugDescription {
+  return [NSString stringWithFormat:@"<%@:%p> Method Name: %@, Arguments: %@", self.className, self, _methodName, _arguments];
+}
+
 @end
 
 #pragma mark -

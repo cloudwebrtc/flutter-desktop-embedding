@@ -91,4 +91,12 @@
            arguments:(nullable id)arguments
            onChannel:(nonnull NSString *)channelName;
 
+- (BOOL)addPlugin:(id<FLEPlugin>)plugin;
+
+-(BOOL) registerTexture:(int64_t) texture_identifier;
+
+-(BOOL) unregisterTexture:(int64_t) texture_identifier;
+
+-(BOOL) markTextureFrameAvailable:(int64_t) texture_identifier;
+
 @end

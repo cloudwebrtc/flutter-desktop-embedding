@@ -21,12 +21,13 @@ import 'package:color_panel/color_panel.dart';
 import 'package:example_flutter/keyboard_test_page.dart';
 import 'package:file_chooser/file_chooser.dart' as file_chooser;
 import 'package:menubar/menubar.dart';
+import 'package:video_player/video_player.dart';
 
 void main() {
   // Desktop platforms are not recognized as valid targets by
   // Flutter; force a specific target to prevent exceptions.
   debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
-  runApp(new MyApp());
+  runApp(VideoApp());
 }
 
 /// Top level widget for the example application.
@@ -265,6 +266,62 @@ class SampleTextField extends StatelessWidget {
     );
   }
 }
+
+class VideoApp extends StatefulWidget {
+  @override
+  _VideoAppState createState() => _VideoAppState();
+}
+
+class _VideoAppState extends State<VideoApp> {
+  VideoPlayerController _controller;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    )
+      ..addListener(() {
+        final bool isPlaying = _controller.value.isPlaying;
+        if (isPlaying != _isPlaying) {
+          setState(() {
+            _isPlaying = isPlaying;
+          });
+        }
+      })
+      ..initialize().then((_) {
+        // Ensure the first frame is shown after the video is initialized, even before the play button has been pressed.
+        setState(() {});
+      });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Video Demo',
+      home: Scaffold(
+        body: Center(
+          child: _controller.value.initialized
+              ? AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          )
+              : Container(),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _controller.value.isPlaying
+              ? _controller.pause
+              : _controller.play,
+          child: Icon(
+            _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 /// Possible file chooser operation types.
 enum _FileChooserType { save, open }

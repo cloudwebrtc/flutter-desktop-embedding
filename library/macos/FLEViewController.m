@@ -19,6 +19,7 @@
 #import "FLEKeyEventPlugin.h"
 #import "FLEReshapeListener.h"
 #import "FLETextInputPlugin.h"
+#import "FLEVideoPlayerPlugin.h"
 #import "FLEView.h"
 
 static NSString *const kXcodeExtraArgumentOne = @"-NSDocumentRevisionsDebugMode";
@@ -141,6 +142,15 @@ static bool OnMakeResourceCurrent(FLEViewController *controller) {
   return true;
 }
 
+static bool OnAcquireExternalTexture(FLEViewController *controller,
+                                     int64_t texture_identifier,
+                                     size_t width,
+                                     size_t height,
+                                     FlutterOpenGLTexture* texture) {
+  return [controller.textureDelegate populateTextureWithIdentifier:texture_identifier width:width height:height texture:texture];
+}
+
+
 #pragma mark Static methods provided for headless engine configuration
 
 static bool HeadlessOnMakeCurrent(FLEViewController *controller) { return false; }
@@ -160,6 +170,7 @@ static bool HeadlessOnMakeResourceCurrent(FLEViewController *controller) { retur
 }
 
 @dynamic view;
+@synthesize textureDelegate=_textureDelegate;
 
 /**
  * Performs initialization that's common between the different init paths.
@@ -278,7 +289,7 @@ static void CommonInit(FLEViewController *controller) {
   [self.additionalKeyResponders removeObject:responder];
 }
 
-- (void)dispatchMessage:(NSDictionary *)message onChannel:(NSString *)channel {
+- (void)dispatchMessage:(id)message onChannel:(NSString *)channel {
   if (![NSJSONSerialization isValidJSONObject:message]) {
     NSLog(@"Error: Unable to construct a valid JSON object from %@", message);
     return;
@@ -303,6 +314,9 @@ static void CommonInit(FLEViewController *controller) {
   FLEKeyEventPlugin *keyEventPlugin = [[FLEKeyEventPlugin alloc] init];
   [self addPlugin:keyEventPlugin];
   [_additionalKeyResponders addObject:keyEventPlugin];
+
+  FLEVideoPlayerPlugin *videoPlayerPlugin = [[FLEVideoPlayerPlugin alloc] init];
+  [self addPlugin:videoPlayerPlugin];
 }
 
 - (BOOL)launchEngineInternalWithAssetsPath:(NSURL *)assets
@@ -368,7 +382,9 @@ static void CommonInit(FLEViewController *controller) {
         .open_gl.clear_current = (BoolCallback)HeadlessOnClearCurrent,
         .open_gl.present = (BoolCallback)HeadlessOnPresent,
         .open_gl.fbo_callback = (UIntCallback)HeadlessOnFBO,
-        .open_gl.make_resource_current = (BoolCallback)HeadlessOnMakeResourceCurrent};
+        .open_gl.make_resource_current = (BoolCallback)HeadlessOnMakeResourceCurrent,
+    };
+
     return config;
   } else {
     const FlutterRendererConfig config = {
@@ -378,7 +394,9 @@ static void CommonInit(FLEViewController *controller) {
         .open_gl.clear_current = (BoolCallback)OnClearCurrent,
         .open_gl.present = (BoolCallback)OnPresent,
         .open_gl.fbo_callback = (UIntCallback)OnFBO,
-        .open_gl.make_resource_current = (BoolCallback)OnMakeResourceCurrent};
+        .open_gl.make_resource_current = (BoolCallback)OnMakeResourceCurrent,
+        .open_gl.gl_external_texture_frame_callback = (TextureFrameCallback)OnAcquireExternalTexture,
+    };
     return config;
   }
 }
@@ -502,6 +520,18 @@ static void CommonInit(FLEViewController *controller) {
 
 - (void)mouseDragged:(NSEvent *)event {
   [self dispatchMouseEvent:event phase:kMove];
+}
+
+-(BOOL) registerTexture:(int64_t) texture_identifier {
+  return FlutterEngineRegisterTexture(_engine, texture_identifier) == kSuccess;
+}
+
+-(BOOL) unregisterTexture:(int64_t) texture_identifier {
+  return FlutterEngineUnregisterTexture(_engine, texture_identifier) == kSuccess;
+}
+
+-(BOOL) markTextureFrameAvailable:(int64_t) texture_identifier {
+  return FlutterEngineMarkTextureFrameAvailable(_engine, texture_identifier) == kSuccess;
 }
 
 @end
