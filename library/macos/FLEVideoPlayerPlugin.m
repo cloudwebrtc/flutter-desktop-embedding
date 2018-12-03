@@ -6,10 +6,13 @@
 //  Copyright © 2018 Google LLC. All rights reserved.
 //
 
+#define COREVIDEO_SILENCE_GL_DEPRECATION 1
+
 #import "FLEVideoPlayerPlugin.h"
 #import "FLEViewController.h"
 #import "FLEViewController+Internal.h"
 #import <FlutterEmbedder/FlutterEmbedder.h>
+#import <OpenGL/gl.h>
 
 @import Foundation;
 @import AVFoundation;
@@ -31,7 +34,7 @@
 
 - (int64_t)duration;
 
--(BOOL) populateTextureWithIdentifier:(int64_t) texture_identifier width:(size_t) width height:(size_t) height texture:(FlutterOpenGLTexture*) texture;
+-(BOOL) populateTextureWidth:(size_t) width height:(size_t) height texture:(FlutterOpenGLTexture*) texture;
 
 @end
 
@@ -45,6 +48,7 @@
   AVPlayerItemVideoOutput *_videoOutput;
   CVDisplayLinkRef _displayLink;
   NSUInteger _frameCount;
+  CVOpenGLTextureCacheRef _textureCache;
 }
 
 @synthesize controller = _controller;
@@ -79,14 +83,58 @@
                                       (id)kCVPixelBufferIOSurfacePropertiesKey : @{}
                                       };
   _videoOutput = [[AVPlayerItemVideoOutput alloc] initWithPixelBufferAttributes:pixBuffAttributes];
+  [_playerItem addOutput:_videoOutput];
   _player = [AVPlayer playerWithPlayerItem:_playerItem];
   _player.actionAtItemEnd = AVPlayerActionAtItemEndNone;
 }
 
 int64_t FLTCMTimeToMillis(CMTime time) { return time.value * 1000 / time.timescale; }
 
--(BOOL) populateTextureWithIdentifier:(int64_t) texture_identifier width:(size_t) width height:(size_t) height texture:(FlutterOpenGLTexture*) texture {
-  
+static void OnGLTextureRelease(CVPixelBufferRef pixelBuffer) {
+  CVPixelBufferRelease(pixelBuffer);
+}
+
+-(BOOL) populateTextureWidth:(size_t) width height:(size_t) height texture:(FlutterOpenGLTexture*) texture {
+
+  // Get the video frame.
+  CVPixelBufferRef videoFramePixelBuffer = NULL;
+  CMTime outputItemTime = [_videoOutput itemTimeForHostTime:CACurrentMediaTime()];
+  if ([_videoOutput hasNewPixelBufferForItemTime:outputItemTime]) {
+    videoFramePixelBuffer = [_videoOutput copyPixelBufferForItemTime:outputItemTime itemTimeForDisplay:NULL];
+  } else {
+    return NO;
+  }
+
+  if (videoFramePixelBuffer == NULL) {
+    return NO;
+  }
+
+  // Create the texture cache if necessary.
+  if (_textureCache == NULL) {
+    CGLContextObj context = [NSOpenGLContext currentContext].CGLContextObj;
+    CGLPixelFormatObj format = CGLGetPixelFormat(context);
+    if (CVOpenGLTextureCacheCreate(kCFAllocatorDefault, NULL, context, format, NULL, &_textureCache) != kCVReturnSuccess) {
+      NSLog(@"Could not create texture cache.");
+      CVPixelBufferRelease(videoFramePixelBuffer);
+      return NO;
+    }
+  }
+
+  CVOpenGLTextureRef openGLTexture = NULL;
+
+  if (CVOpenGLTextureCacheCreateTextureFromImage(kCFAllocatorDefault, _textureCache, videoFramePixelBuffer, NULL, &openGLTexture) != kCVReturnSuccess) {
+    CVPixelBufferRelease(videoFramePixelBuffer);
+    return NO;
+  }
+
+  texture->target = CVOpenGLTextureGetTarget(openGLTexture);
+  texture->name = CVOpenGLTextureGetName(openGLTexture);
+  texture->format = GL_RGBA8;
+  texture->destruction_callback = (VoidCallback)&OnGLTextureRelease;
+  texture->user_data = openGLTexture;
+
+  CVPixelBufferRelease(videoFramePixelBuffer);
+  return YES;
 }
 
 - (int64_t)position {
@@ -114,7 +162,6 @@ int64_t FLTCMTimeToMillis(CMTime time) { return time.value * 1000 / time.timesca
       return;
     }
     if (_playerItem.status == AVPlayerItemStatusReadyToPlay) {
-      [_playerItem addOutput:_videoOutput];
       [_player play];
       [self startDisplayLink];
 
@@ -132,6 +179,7 @@ int64_t FLTCMTimeToMillis(CMTime time) { return time.value * 1000 / time.timesca
 }
 
 -(void) dealloc {
+  CVOpenGLBufferRelease(_textureCache);
   [self stopDisplayLink];
   [_playerItem removeObserver:self forKeyPath:@"status"];
   [_controller unregisterTexture:self.textureIdentifier];
@@ -224,13 +272,7 @@ static CVReturn OnDisplayLink(CVDisplayLinkRef CV_NONNULL displayLink,
 
 
 -(BOOL) populateTextureWithIdentifier:(int64_t) texture_identifier width:(size_t) width height:(size_t) height texture:(FlutterOpenGLTexture*) texture {
-  FLEVideoPlayer *player = _videoPlayers[@(texture_identifier)];
-
-  if (!player) {
-    return NO;
-  }
-
-  return [player populateTextureWithIdentifier:texture_identifier width:width height:height texture:texture];
+  return [_videoPlayers[@(texture_identifier)] populateTextureWidth:width height:height texture:texture];
 }
 
 - (void)handleMethodCall:(nonnull FLEMethodCall *)call result:(nonnull FLEMethodResult)result {

@@ -14,10 +14,45 @@
 
 #import "FLEView.h"
 
-@implementation FLEView
+@implementation FLEView {
+  CGLContextObj _context;
+}
 
 #pragma mark -
 #pragma mark FLEContextHandlingProtocol
+
+-(instancetype) initWithCoder:(NSCoder *)decoder {
+  self = [super initWithCoder:decoder];
+
+  if (self) {
+    CGLPixelFormatAttribute attributes[] = {
+      kCGLPFAOpenGLProfile, (CGLPixelFormatAttribute) kCGLOGLPVersion_3_2_Core,
+      kCGLPFADoubleBuffer,
+      (CGLPixelFormatAttribute)0
+    };
+
+    CGLPixelFormatObj pixFormat;
+    GLint npix;
+    CGLError error;
+
+    error = CGLChoosePixelFormat(attributes, &pixFormat, &npix);
+    NSAssert(error == kCGLNoError, @"Must be able to choose pixel format.");
+    NSAssert(pixFormat != NULL, @"CGLChoosePixelFormat failed.");
+
+    error = CGLCreateContext(pixFormat, NULL, &_context);
+    NSAssert(error == kCGLNoError, @"Must be able to create context.");
+
+    CGLReleasePixelFormat(pixFormat);
+
+    self.openGLContext = [[NSOpenGLContext alloc] initWithCGLContextObj:_context];
+  }
+
+  return self;
+}
+
+-(void) dealloc {
+  CGLDestroyContext(_context);
+}
 
 - (void)makeCurrentContext {
   [self.openGLContext makeCurrentContext];
