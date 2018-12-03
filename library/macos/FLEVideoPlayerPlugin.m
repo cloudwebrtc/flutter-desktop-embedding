@@ -239,8 +239,7 @@ static CVReturn OnDisplayLink(CVDisplayLinkRef CV_NONNULL displayLink,
   if ([call.methodName isEqualToString:@"listen"]) {
     result(nil);
   } else {
-    NSAssert(NO, @"Unhandled method.");
-    result(nil);
+    result(FLEMethodNotImplemented);
   }
 }
 
