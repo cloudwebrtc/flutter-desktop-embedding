@@ -312,7 +312,7 @@ static CVReturn OnDisplayLink(CVDisplayLinkRef CV_NONNULL displayLink,
       [player pause];
       result(nil);
     } else {
-      NSAssert(NO, @"");
+      result(FLEMethodNotImplemented);
     }
   }
 }
