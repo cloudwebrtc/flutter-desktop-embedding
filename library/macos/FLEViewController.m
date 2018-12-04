@@ -523,15 +523,15 @@ static void CommonInit(FLEViewController *controller) {
 }
 
 -(BOOL) registerTexture:(int64_t) texture_identifier {
-  return FlutterEngineRegisterTexture(_engine, texture_identifier) == kSuccess;
+  return FlutterEngineRegisterExternalTexture(_engine, texture_identifier) == kSuccess;
 }
 
 -(BOOL) unregisterTexture:(int64_t) texture_identifier {
-  return FlutterEngineUnregisterTexture(_engine, texture_identifier) == kSuccess;
+  return FlutterEngineUnregisterExternalTexture(_engine, texture_identifier) == kSuccess;
 }
 
 -(BOOL) markTextureFrameAvailable:(int64_t) texture_identifier {
-  return FlutterEngineMarkTextureFrameAvailable(_engine, texture_identifier) == kSuccess;
+  return FlutterEngineMarkExternalTextureFrameAvailable(_engine, texture_identifier) == kSuccess;
 }
 
 @end

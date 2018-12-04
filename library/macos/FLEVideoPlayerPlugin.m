@@ -173,7 +173,7 @@ static void OnGLTextureRelease(CVPixelBufferRef pixelBuffer) {
                                      @"height" : @(size.height),
                                      }] onChannel:_channel];
     } else {
-      NSLog(@"Could not initialize video player for playback.");
+//      NSLog(@"Could not initialize video player for playback.");
     }
   }
 }
@@ -282,6 +282,11 @@ static CVReturn OnDisplayLink(CVDisplayLinkRef CV_NONNULL displayLink,
     result(nil);
   } else if ([@"create" isEqualToString:call.methodName]) {
     NSURL *url = [NSURL URLWithString:((NSDictionary*)call.arguments)[@"uri"]];
+
+    if (url == nil) {
+      url = [NSURL fileURLWithPath:((NSDictionary*)call.arguments)[@"asset"]];
+    }
+
     FLEVideoPlayer *player = [[FLEVideoPlayer alloc] initWithURL:url controller:self.controller];
     _videoPlayers[@(player.textureIdentifier)] = player;
     result(@{@"textureId" : @(player.textureIdentifier)});
