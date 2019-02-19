@@ -26,8 +26,8 @@ There is currently no tool that abstracts the platform-specific builds the
 way `flutter build` or `flutter run` does for iOS and Android, so you will need
 to follow the platform-specific build instructions for your platform below.
 
-The examples build the library from source, so you will need to ensure you
-have all the dependencies for
+The examples on Windows and Linux build the library from source, so you will
+need to ensure you have all the dependencies for
 [building the library on your platform](../library/README.md) before continuing.
 
 ### Linux
@@ -66,21 +66,13 @@ to a XIB in your own project:
 
 ### Windows
 
-Open the `Example Embedder` Visual Studio solution file under `windows_fde\` and
-build the GLFW Example project.
+Open the `Example Embedder` Visual Studio solution file under `windows_fde\` to
+build and run the GLFW Example project.
 
-The resulting binary will be in `bin\x64\$(Configuration)\GLFW Example\`. It
-currently uses relative paths so must be run from the `windows_fde\` directory:
-
-```
-> ".\bin\x64\$(Configuration)\GLFW Example\GLFW Example.exe"
-```
-
-e.g.:
+The resulting binary will be in
+`example\build\windows_fde\x64\$(Configuration)\GLFW Example\`. It can be run
+manually from there. E.g.:
 
 ```
-> ".\bin\x64\Debug Dynamic Library\GLFW Example\GLFW Example.exe"
+> .\"example\build\windows_fde\x64\Debug\GLFW Example\GLFW Example.exe"
 ```
-
-Or you can use Visual Studio's inbuilt debugger to build and run the
-example application automatically.

@@ -21,32 +21,25 @@ matrix:
         - sudo apt-get update
       install:
         - build/ci/linux/install_dependencies
-        - build/ci/install_flutter $TRAVIS_BUILD_DIR/..
-      before_script:
-        - export PATH=$PATH:$TRAVIS_BUILD_DIR/../flutter/bin:$TRAVIS_BUILD_DIR/bin
-      script:
-        - make -C example/linux_fde
-
-    - os: linux
-      dist: xenial
-      language: cpp
-      before_install:
-        - sudo apt-get update
-      install:
-        - build/ci/linux/install_dependencies
-        - build/ci/install_flutter $TRAVIS_BUILD_DIR/..
+        # None of the packaged channels are new enough for the current state
+        # of FDE, so for now clone master instead.
+        #- build/ci/install_flutter $TRAVIS_BUILD_DIR/..
+        - git clone -b master https://github.com/flutter/flutter.git $TRAVIS_BUILD_DIR/../flutter
         - build/ci/linux/install_gn bin
       before_script:
         - export PATH=$PATH:$TRAVIS_BUILD_DIR/bin
       script:
-        - make -C example/linux_fde USE_GN=1
+        - make -C example/linux_fde
 
     - os: osx
       language: objective-c
       xcode_project: example/macos_fde/ExampleEmbedder.xcodeproj
       xcode_scheme: ExampleEmbedder
       install:
-        - build/ci/install_flutter $TRAVIS_BUILD_DIR/..
+        # None of the packaged channels are new enough for the current state
+        # of FDE, so for now clone master instead.
+        #- build/ci/install_flutter $TRAVIS_BUILD_DIR/..
+        - git clone -b master https://github.com/flutter/flutter.git $TRAVIS_BUILD_DIR/../flutter
       # Override the build command to remove 'test'. The example embedder
       # doesn't have any unit tests, and while a UI test to ensure that it
       # launches would be useful, that's currently broken by:

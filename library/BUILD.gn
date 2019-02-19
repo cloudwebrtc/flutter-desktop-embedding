@@ -18,14 +18,12 @@ import("//library/engine.gni")
 
 published_shared_library("flutter_embedder") {
   # GLFW embedding implementation.
-  if (is_linux || is_win) {
+  if (use_glfw) {
     public = [
-      "include/flutter_desktop_embedding/glfw/embedder.h",
-      "include/flutter_desktop_embedding/glfw/flutter_window_controller.h",
+      "include/flutter_desktop_embedding_core/glfw/embedder.h",
     ]
     sources = [
       "common/glfw/embedder.cc",
-      "common/glfw/flutter_window_controller.cc",
       "common/glfw/key_event_handler.cc",
       "common/glfw/key_event_handler.h",
       "common/glfw/keyboard_hook_handler.h",
@@ -34,70 +32,60 @@ published_shared_library("flutter_embedder") {
     ]
   }
 
+  deps = [
+    ":flutter_engine",
+  ]
+
   # Embedding-agnostic shared C++.
   if (is_linux || is_win) {
     sources += [
-      "common/engine_method_result.cc",
-      "common/internal/plugin_handler.cc",
-      "common/internal/plugin_handler.h",
+      "common/internal/incoming_message_dispatcher.cc",
+      "common/internal/incoming_message_dispatcher.h",
       "common/internal/text_input_model.cc",
       "common/internal/text_input_model.h",
-      "common/json_message_codec.cc",
-      "common/json_method_codec.cc",
     ]
-    public += [
-      "include/flutter_desktop_embedding/basic_message_channel.h",
-      "include/flutter_desktop_embedding/binary_messenger.h",
-      "include/flutter_desktop_embedding/engine_method_result.h",
-      "include/flutter_desktop_embedding/fde_export.h",
-      "include/flutter_desktop_embedding/json_message_codec.h",
-      "include/flutter_desktop_embedding/json_method_codec.h",
-      "include/flutter_desktop_embedding/message_codec.h",
-      "include/flutter_desktop_embedding/method_call.h",
-      "include/flutter_desktop_embedding/method_channel.h",
-      "include/flutter_desktop_embedding/method_codec.h",
-      "include/flutter_desktop_embedding/method_result.h",
-      "include/flutter_desktop_embedding/plugin_registrar.h",
+    public += [ "include/flutter_desktop_embedding_core/fde_export.h" ]
+
+    deps += [
+      "//library/common/client_wrapper:client_wrapper_internal",
+      "//library/common/client_wrapper:publish_wrapper",
     ]
   }
 
-  deps = [
-    ":fetch_flutter_engine",
+  defines = [
+    "FLUTTER_DESKTOP_EMBEDDING_IMPL",
+    "USE_FDE_TREE_PATHS",
   ]
 
-  defines = [ "FLUTTER_DESKTOP_EMBEDDING_IMPL" ]
-
-  public_header_subdir = "flutter_desktop_embedding"
+  public_header_subdir = "flutter_desktop_embedding_core"
 
   public_configs = [ ":relative_public_headers" ]
 
   if (is_linux) {
-    libs = [ "GL" ]
-
-    deps += [ "//library/linux:publish_flutter_engine" ]
-
-    configs += [
-      "//build/linux/config:epoxy",
-      "//build/linux/config:glfw3",
-      "//build/linux/config:gtk3",
-      "//build/linux/config:jsoncpp",
-      "//build/linux/config:x11",
-    ]
+    configs += [ "//build/linux/config:jsoncpp" ]
   }
 
   if (is_win) {
-    deps += [
-      "//library/windows:build_jsoncpp",
-      "//library/windows:fetch_glfw",
-      "//library/windows:publish_flutter_engine",
-    ]
+    deps += [ "//third_party/jsoncpp:jsoncpp" ]
 
     libs = [ engine_files[2] ]
+  }
 
-    public_configs += [
-      "//library/windows:relative_glfw_dependencies",
-      "//library/windows:relative_jsoncpp_dependencies",
-    ]
+  if (use_glfw) {
+    if (is_linux) {
+      libs = [ "GL" ]
+
+      configs += [
+        "//build/linux/config:epoxy",
+        "//build/linux/config:glfw3",
+        "//build/linux/config:gtk3",
+        "//build/linux/config:x11",
+      ]
+    }
+
+    if (is_win) {
+      deps += [ "//library/windows:fetch_glfw" ]
+    }
   }
 }
 
@@ -113,6 +101,13 @@ config("relative_engine_headers") {
   include_dirs = [ "$engine_download_dir" ]
 }
 
+group("flutter_engine") {
+  public_deps = [
+    ":fetch_flutter_engine",
+    ":publish_flutter_engine",
+  ]
+}
+
 action("fetch_flutter_engine") {
   script = "//tools/dart_tools/bin/update_flutter_engine.dart"
   inputs = [
@@ -124,4 +119,21 @@ action("fetch_flutter_engine") {
     rebase_path(engine_download_dir, root_build_dir),
   ]
   public_configs = [ ":relative_engine_headers" ]
+}
+
+# Places the downloaded Flutter engine library at the top level of the
+# output directory where built libraries go, so that it doesn't require
+# special link handling, and publishes its header.
+copy("publish_flutter_engine") {
+  sources = engine_files
+
+  # Remove the header, since "SDK" clients don't need access to that.
+  sources -= [ engine_files[0] ]
+
+  outputs = [
+    "$root_out_dir/{{source_file_part}}",
+  ]
+  deps = [
+    ":fetch_flutter_engine",
+  ]
 }
