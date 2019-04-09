@@ -21,7 +21,7 @@
 
 #include <color_panel/color_panel_plugin.h>
 #include <file_chooser/file_chooser_plugin.h>
-#include <flutter_desktop_embedding/flutter_window_controller.h>
+#include <flutter/flutter_window_controller.h>
 #include <menubar/menubar_plugin.h>
 
 namespace {
@@ -63,24 +63,21 @@ int main(int argc, char **argv) {
   arguments.push_back("--disable-dart-asserts");
 #endif
 
-  flutter_desktop_embedding::FlutterWindowController flutter_controller(
-      icu_data_path);
+  flutter::FlutterWindowController flutter_controller(icu_data_path);
 
   // Start the engine.
-  if (!flutter_controller.CreateWindow(640, 480, assets_path, arguments)) {
+  if (!flutter_controller.CreateWindow(800, 600, "Flutter Desktop Example",
+                                       assets_path, arguments)) {
     return EXIT_FAILURE;
   }
 
   // Register any native plugins.
-  plugins_menubar::MenubarPlugin::RegisterWithRegistrar(
-      flutter_controller.GetRegistrarForPlugin(
-          "plugins_menubar::MenubarPlugin"));
-  plugins_color_panel::ColorPanelPlugin::RegisterWithRegistrar(
-      flutter_controller.GetRegistrarForPlugin(
-          "plugins_color_panel::ColorPanelPlugin"));
-  plugins_file_chooser::FileChooserPlugin::RegisterWithRegistrar(
-      flutter_controller.GetRegistrarForPlugin(
-          "plugins_file_chooser::FileChooserPlugin"));
+  MenubarRegisterWithRegistrar(
+      flutter_controller.GetRegistrarForPlugin("Menubar"));
+  ColorPanelRegisterWithRegistrar(
+      flutter_controller.GetRegistrarForPlugin("ColorPanel"));
+  FileChooserRegisterWithRegistrar(
+      flutter_controller.GetRegistrarForPlugin("FileChooser"));
 
   // Run until the window is closed.
   flutter_controller.RunEventLoop();
