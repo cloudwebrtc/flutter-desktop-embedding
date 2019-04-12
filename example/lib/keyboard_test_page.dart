@@ -75,12 +75,12 @@ class _KeyboardTestPageState extends State<KeyboardTestPage> {
 
     int keyCode;
     switch (event.data.runtimeType) {
-      case RawKeyEventDataMacOs:
-        final RawKeyEventDataMacOs data = event.data;
+      case RawKeyEventDataAndroid:
+        final RawKeyEventDataAndroid data = event.data;
         keyCode = data.keyCode;
         break;
       default:
-        throw new Exception('Unsupported platform ${event.data.runtimeType}');
+        throw new Exception('Unsupported platform');
     }
 
     _addMessage('${isKeyDown ? 'KeyDown' : 'KeyUp'}: $keyCode');

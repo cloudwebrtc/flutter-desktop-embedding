@@ -24,6 +24,8 @@ class ExampleWindow: NSWindow {
       with: flutterViewController.registrar(forPlugin: "FLEFileChooserPlugin"))
     FLEMenubarPlugin.register(
       with: flutterViewController.registrar(forPlugin: "FLEMenubarPlugin"))
+    FLEWebRTCPlugin.register(
+        with: flutterViewController.registrar(forPlugin: "FLEWebRTCPlugin"))
 
     let assets = NSURL.fileURL(withPath: "flutter_assets", relativeTo: Bundle.main.resourceURL)
     var arguments: [String] = [];

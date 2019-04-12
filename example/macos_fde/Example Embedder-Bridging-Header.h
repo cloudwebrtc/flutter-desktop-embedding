@@ -16,3 +16,4 @@
 #import <FlutterEmbedderColorPanel/FlutterEmbedderColorPanel.h>
 #import <FlutterEmbedderFileChooser/FlutterEmbedderFileChooser.h>
 #import <FlutterEmbedderMenubar/FlutterEmbedderMenubar.h>
+#import <FlutterEmbedderWebrtc/FlutterEmbedderWebrtc.h>

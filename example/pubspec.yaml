@@ -17,6 +17,8 @@ dependencies:
     path: ../plugins/file_chooser
   menubar:
     path: ../plugins/menubar
+  flutter_webrtc:
+    path: ../plugins/flutter_webrtc
 
 dev_dependencies:
   flutter_test:
