@@ -22,6 +22,7 @@ _flutter_library_core_headers = [
   "$flutter_library_download_dir/flutter_export.h",
   "$flutter_library_download_dir/flutter_messenger.h",
   "$flutter_library_download_dir/flutter_plugin_registrar.h",
+  "$flutter_library_download_dir/flutter_texture_registrar.h",
 ]
 _flutter_library_glfw_headers = [
   "$flutter_library_download_dir/flutter_glfw.h",
@@ -41,6 +42,7 @@ _flutter_client_wrapper_core_headers = [
 
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/basic_message_channel.h",
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/binary_messenger.h",
+    "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/event_channel.h",
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/engine_method_result.h",
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/json_message_codec.h",
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/json_method_codec.h",
@@ -51,6 +53,7 @@ _flutter_client_wrapper_core_headers = [
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/method_codec.h",
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/method_result.h",
     "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/plugin_registrar.h",
+    "$flutter_library_download_dir/cpp_client_wrapper/$flutter_client_wrapper_include_dir/texture_registrar.h",
 ]
 _flutter_client_wrapper_glfw_headers = [
 

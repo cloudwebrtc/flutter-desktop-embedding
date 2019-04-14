@@ -287,7 +287,10 @@ class FlutterArtifactFetcher {
         '${_flutterArtifactUrlPlatformDirectory[platform]}/'
         '${_artifactDetails[platform][artifact].artifactFilename}');
 
-    final httpClient = new HttpClient();
+    final httpClient = new HttpClient()
+        ..findProxy = (Uri url){ return 'DIRECT;'; }
+        ..badCertificateCallback =
+            ((X509Certificate cert, String host, int port) => true);
     final response =
         await httpClient.getUrl(archiveUri).then((request) => request.close());
     final archiveData = <int>[];

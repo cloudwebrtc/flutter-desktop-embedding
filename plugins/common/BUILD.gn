@@ -19,6 +19,9 @@ import("flutter_library.gni")
 # inculdes for its header rather than project-relative.
 config("relative_flutter_library_headers") {
   include_dirs = [ "$flutter_library_download_dir" ]
+  if (is_win) {
+    libs = [ "$flutter_library_download_dir/flutter_windows.dll.lib", ]
+  }
 }
 
 action("fetch_flutter_library") {

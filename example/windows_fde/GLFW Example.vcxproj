@@ -65,7 +65,7 @@
       <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>flutter_windows.dll.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>flutter_windows.dll.lib;opengl32.lib;flutter_embedder_webrtc.dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>$(ProjectDir)scripts\prepare_dependencies "$(IntDir)"</Command>

@@ -78,7 +78,7 @@ toolchain("msvc") {
       pdbfile,
     ]
 
-    link_output = dllfile
+    link_output = libfile
     depend_output = dllfile
   }
 

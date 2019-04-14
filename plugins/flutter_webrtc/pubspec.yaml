@@ -1,0 +1,21 @@
+name: flutter_webrtc
+description: Flutter WebRTC plugin for iOS/Android.
+version: 0.0.2
+author: cloudwebrtc <duanweiwei1982@gmail.com>
+homepage: https://github.com/cloudwebrtc/flutter-webrtc
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+# For information on the generic Dart part of this file, see the
+# following page: https://www.dartlang.org/tools/pub/pubspec
+
+# The following section is specific to Flutter.
+flutter:
+  plugin:
+    androidPackage: com.cloudwebrtc.webrtc
+    pluginClass: FlutterWebRTCPlugin
+
+environment:
+  sdk: "<3.0.0"

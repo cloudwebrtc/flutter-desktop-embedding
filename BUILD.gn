@@ -23,6 +23,7 @@ group("gn_all") {
   if (is_win) {
     deps = [
       "//third_party/jsoncpp:jsoncpp_test",
+      "//plugins/flutter_webrtc:webrtc",
     ]
   }
 }

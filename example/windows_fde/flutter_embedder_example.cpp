@@ -16,7 +16,8 @@
 #include <string>
 #include <vector>
 
-#include "flutter/flutter_window_controller.h"
+#include <flutter_webrtc/flutter_webrtc_plugin.h>
+#include <flutter/flutter_window_controller.h>
 
 // Include windows.h last, to minimize potential conflicts. The CreateWindow
 // macro needs to be undefined because it prevents calling
@@ -68,6 +69,10 @@ int main(int argc, char **argv) {
                                        assets_path, arguments)) {
     return EXIT_FAILURE;
   }
+
+  // Register any native plugins.
+  FlutterWebRTCRegisterWithRegistrar(
+      flutter_controller.GetRegistrarForPlugin("FlutterWebRTC"));
 
   // Run until the window is closed.
   flutter_controller.RunEventLoop();
