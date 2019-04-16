@@ -13,10 +13,7 @@
 
 #include "base/refcount.h"
 #include "base/scoped_ref_ptr.h"
-
-#include <stdint.h>
-#include <string>
-#include <vector>
+#include "base/inlined_vector.h"
 
 namespace libwebrtc {
 
@@ -30,11 +27,46 @@ struct IceServer {
   char password[kMaxStringLength];
 };
 
+enum IceTransportsType { kNone, kRelay, kNoHost, kAll };
+
+enum TcpCandidatePolicy {
+  kTcpCandidatePolicyEnabled,
+  kTcpCandidatePolicyDisabled
+};
+
+enum CandidateNetworkPolicy {
+  kCandidateNetworkPolicyAll,
+  kCandidateNetworkPolicyLowCost
+};
+
+enum RtcpMuxPolicy {
+  kRtcpMuxPolicyNegotiate,
+  kRtcpMuxPolicyRequire,
+};
+
+enum BundlePolicy {
+  kBundlePolicyBalanced,
+  kBundlePolicyMaxBundle,
+  kBundlePolicyMaxCompat
+};
+
+enum class SdpSemantics { kPlanB, kUnifiedPlan };
+
 struct RTCConfiguration {
-  MediaSecurityType srtp_type = kDTLS_SRTP;
   IceServer ice_servers[kMaxIceServerSize];
+  IceTransportsType type = kAll;
+  BundlePolicy bundle_policy = kBundlePolicyBalanced;
+  RtcpMuxPolicy rtcp_mux_policy = kRtcpMuxPolicyRequire;
+  CandidateNetworkPolicy candidate_network_policy = kCandidateNetworkPolicyAll;
+  TcpCandidatePolicy tcp_candidate_policy = kTcpCandidatePolicyEnabled;
+
+  int ice_candidate_pool_size = 0;
+
+  MediaSecurityType srtp_type = kDTLS_SRTP;
+  SdpSemantics sdp_semantics = SdpSemantics::kPlanB;
   bool offer_to_receive_audio = true;
   bool offer_to_receive_video = true;
+  // private
   bool use_rtp_mux = true;
   uint32_t local_audio_bandwidth = 128;
   uint32_t local_video_bandwidth = 512;
@@ -48,6 +80,8 @@ struct SdpParseError {
   char description[kMaxStringLength];
 };
 
+#define Vector bsp::inlined_vector
+
 };  // namespace libwebrtc
 
-#endif //LIB_WEBRTC_RTC_TYPES_HXX
+#endif  // LIB_WEBRTC_RTC_TYPES_HXX

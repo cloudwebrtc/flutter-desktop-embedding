@@ -8,7 +8,7 @@ const char *kChannelName = "cloudwebrtc.com/WebRTC.Method";
 namespace flutter_webrtc_plugin {
 
 // A webrtc plugin for windows/linux.
-class FlutterWebRTCPlugin : public flutter::Plugin {
+class FlutterWebRTCPluginImpl : public FlutterWebRTCPlugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrar *registrar) {
     auto channel = std::make_unique<flutter::MethodChannel<Json::Value>>(
@@ -18,8 +18,8 @@ class FlutterWebRTCPlugin : public flutter::Plugin {
     auto *channel_pointer = channel.get();
 
     // Uses new instead of make_unique due to private constructor.
-    std::unique_ptr<FlutterWebRTCPlugin> plugin(
-        new FlutterWebRTCPlugin(registrar, std::move(channel)));
+    std::unique_ptr<FlutterWebRTCPluginImpl> plugin(
+        new FlutterWebRTCPluginImpl(registrar, std::move(channel)));
 
     channel_pointer->SetMethodCallHandler(
         [plugin_pointer = plugin.get()](const auto &call, auto result) {
@@ -29,7 +29,7 @@ class FlutterWebRTCPlugin : public flutter::Plugin {
     registrar->AddPlugin(std::move(plugin));
   }
 
-  virtual ~FlutterWebRTCPlugin() {}
+  virtual ~FlutterWebRTCPluginImpl() {}
 
   flutter::BinaryMessenger *messenger() { return messenger_; }
 
@@ -37,7 +37,7 @@ class FlutterWebRTCPlugin : public flutter::Plugin {
 
  private:
   // Creates a plugin that communicates on the given channel.
-  FlutterWebRTCPlugin(
+  FlutterWebRTCPluginImpl(
       flutter::PluginRegistrar *registrar,
       std::unique_ptr<flutter::MethodChannel<Json::Value>> channel)
       : channel_(std::move(channel)),
@@ -66,6 +66,6 @@ class FlutterWebRTCPlugin : public flutter::Plugin {
 void FlutterWebRTCRegisterWithRegistrar(
     FlutterDesktopPluginRegistrarRef registrar) {
   static auto *plugin_registrar = new flutter::PluginRegistrar(registrar);
-  flutter_webrtc_plugin::FlutterWebRTCPlugin::RegisterWithRegistrar(
+  flutter_webrtc_plugin::FlutterWebRTCPluginImpl::RegisterWithRegistrar(
       plugin_registrar);
 }

@@ -7,6 +7,7 @@
 #include "rtc_data_channel.h"
 #include "rtc_ice_candidate.h"
 #include "rtc_media_stream.h"
+#include "rtc_mediaconstraints.h"
 #include "rtc_session_description.h"
 #include "rtc_video_source.h"
 #include "rtc_video_track.h"
@@ -139,20 +140,21 @@ class RTCPeerConnectionObserver {
 
 class RTCPeerConnection : public RefCountInterface {
  public:
-
   virtual int AddStream(scoped_refptr<RTCMediaStream> stream) = 0;
 
   virtual int RemoveStream(scoped_refptr<RTCMediaStream> stream) = 0;
 
   virtual scoped_refptr<RTCDataChannel> CreateDataChannel(
       const char* label,
-      const RTCDataChannelInit *dataChannelDict) = 0;
+      const RTCDataChannelInit* dataChannelDict) = 0;
 
   virtual void CreateOffer(OnSdpCreateSuccess success,
-                           OnSdpCreateFailure failure) = 0;
+                           OnSdpCreateFailure failure,
+                           scoped_refptr<RTCMediaConstraints> constraints) = 0;
 
   virtual void CreateAnswer(OnSdpCreateSuccess success,
-                            OnSdpCreateFailure failure) = 0;
+                            OnSdpCreateFailure failure,
+                            scoped_refptr<RTCMediaConstraints> constraints) = 0;
 
   virtual void Close() = 0;
 

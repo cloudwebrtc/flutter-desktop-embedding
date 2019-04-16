@@ -12,29 +12,33 @@ using namespace libwebrtc;
 using namespace flutter;
 
 class FlutterVideoRenderer : public Texture,
-                             public RTCVideoRenderer<RTCVideoFrame> {
+      public RTCVideoRenderer<scoped_refptr<RTCVideoFrame>> {
  public:
-  FlutterVideoRenderer(TextureRegistrar *registrar, BinaryMessenger *messenger,
-                       int64_t texture_id);
+  FlutterVideoRenderer(TextureRegistrar *registrar, BinaryMessenger *messenger);
 
   virtual std::shared_ptr<uint8_t> CopyTextureBuffer(size_t width,
                                                      size_t height) override;
 
-  virtual void OnFrame(RTCVideoFrame &frame) override;
+  virtual void OnFrame(scoped_refptr<RTCVideoFrame> frame) override;
 
   void SetVideoTrack(RTCVideoTrack *track);
 
+  int64_t texture_id() { return texture_id_; }
+
  private:
   struct FrameSize {
-    int width;
-    int height;
+    size_t width;
+    size_t height;
   };
-  FrameSize size_ = {0, 0};
+  FrameSize dest_frame_size_ = {0, 0};
+  FrameSize frame_size_ = {0, 0};
+  bool first_frame_rendered = false;
   TextureRegistrar *registrar_ = nullptr;
   std::unique_ptr<EventChannel<Json::Value>> event_channel_;
   const EventSink<Json::Value> *event_sink_ = nullptr;
   int64_t texture_id_ = -1;
   RTCVideoTrack *track_ = nullptr;
+  scoped_refptr<RTCVideoFrame> frame_;
   std::shared_ptr<uint8_t> frame_buffer_;
 };
 
@@ -52,7 +56,6 @@ class FlutterVideoRendererManager {
 
  private:
   FlutterWebRTCBase *base_;
-  int64_t texture_counter_ = -1;
   std::map<int64_t, std::unique_ptr<FlutterVideoRenderer>> renderers_;
 };
 

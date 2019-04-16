@@ -12,6 +12,7 @@
 #include "rtc_audio_device.h"
 #include "rtc_media_stream.h"
 #include "rtc_media_track.h"
+#include "rtc_mediaconstraints.h"
 #include "rtc_peerconnection.h"
 #include "rtc_peerconnection_factory.h"
 #include "rtc_video_device.h"
@@ -39,7 +40,7 @@ class FlutterWebRTCBase {
   friend class FlutterVideoRendererManager;
   friend class FlutterDataChannel;
   friend class FlutterPeerConnectionObserver;
-
+  enum ParseConstraintType { kMandatory, kOptional };
  public:
   FlutterWebRTCBase(BinaryMessenger *messenger, TextureRegistrar *textures);
   ~FlutterWebRTCBase();
@@ -51,8 +52,19 @@ class FlutterWebRTCBase {
   scoped_refptr<RTCMediaStream> MediaStreamForId(const std::string &id);
 
   bool ParseConstraints(const Json::Value &constraints,
-                        RTCConfiguration *configuration);
+                            RTCConfiguration *configuration);
 
+  scoped_refptr<RTCMediaConstraints> ParseMediaConstraints(
+      const Json::Value &constraints);
+
+  bool ParseRTCConfiguration(const Json::Value &map,
+                             RTCConfiguration &configuration);
+ private:
+  void ParseConstraints(Json::Value src,
+                        scoped_refptr<RTCMediaConstraints> mediaConstraints,
+                        ParseConstraintType type = kMandatory);
+  bool CreateIceServers(const Json::Value &iceServersArray,
+                        IceServer *ice_servers);
  protected:
   scoped_refptr<RTCPeerConnectionFactory> factory_;
   scoped_refptr<RTCAudioDevice> audio_device_;

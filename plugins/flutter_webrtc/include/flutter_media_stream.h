@@ -11,12 +11,14 @@ class FlutterMediaStream {
  public:
   FlutterMediaStream(FlutterWebRTCBase *base) : base_(base) {}
 
-  void GetUserMedia(const Json::Value *constraints,
+  void GetUserMedia(const Json::Value& constraints,
                     std::unique_ptr<MethodResult<Json::Value>> result);
 
-  scoped_refptr<RTCAudioTrack> GetUserAudio(const Json::Value &constraints);
+  void GetUserAudio(const Json::Value &constraints,
+                    scoped_refptr<RTCMediaStream> stream, Json::Value& params);
 
-  scoped_refptr<RTCVideoTrack> GetUserVideo(const Json::Value &constraints);
+  void GetUserVideo(const Json::Value &constraints,
+                    scoped_refptr<RTCMediaStream> stream, Json::Value &params);
 
   void GetSources(std::unique_ptr<MethodResult<Json::Value>> result);
 

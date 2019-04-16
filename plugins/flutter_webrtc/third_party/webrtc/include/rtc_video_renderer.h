@@ -10,7 +10,7 @@ class RTCVideoRenderer {
  public:
   virtual ~RTCVideoRenderer() {}
 
-  virtual void OnFrame(VideoFrameT& frame) = 0;
+  virtual void OnFrame(VideoFrameT frame) = 0;
 };
 
 };  // namespace libwebrtc

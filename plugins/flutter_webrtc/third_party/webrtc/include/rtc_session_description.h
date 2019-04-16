@@ -14,7 +14,7 @@ class RTCSessionDescription : public RefCountInterface {
 
   virtual SdpType GetType() = 0;
 
-  virtual const char* type() const = 0;
+  virtual const char* type() = 0;
 
   virtual bool ToString(char* buffer, int length) = 0;
 

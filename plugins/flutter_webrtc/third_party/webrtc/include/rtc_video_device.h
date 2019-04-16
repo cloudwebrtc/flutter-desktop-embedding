@@ -3,11 +3,12 @@
 
 #include "rtc_types.h"
 
-namespace cricket {
-class VideoCapturer;
-}
-
 namespace libwebrtc {
+
+class RTCVideoCapturer : public RefCountInterface {
+ public:
+  virtual ~RTCVideoCapturer() {}
+};
 
 class RTCVideoDevice : public RefCountInterface {
  public:
@@ -21,9 +22,7 @@ class RTCVideoDevice : public RefCountInterface {
                                 char* productUniqueIdUTF8 = 0,
                                 uint32_t productUniqueIdUTF8Length = 0) = 0;
 
-  virtual cricket::VideoCapturer* Create(
-      const std::string& name,
-      uint32_t index) = 0;
+  virtual scoped_refptr<RTCVideoCapturer> Create(const char* name, uint32_t index) = 0;
 
  protected:
   virtual ~RTCVideoDevice() {}

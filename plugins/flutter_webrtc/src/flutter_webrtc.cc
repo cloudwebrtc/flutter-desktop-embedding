@@ -23,16 +23,25 @@ void FlutterWebRTC::HandleMethodCall(
       result->Error("Bad Arguments", "Null arguments received");
       return;
     }
-    const Json::Value &arguments = *method_call.arguments();
-    CreateRTCPeerConnection(&arguments, std::move(result));
+    const Json::Value arguments = *method_call.arguments();
+    const Json::Value configuration = arguments["configuration"];
+    const Json::Value constraints = arguments["constraints"];
+    CreateRTCPeerConnection(configuration, constraints, std::move(result));
   } else if (method_call.method_name().compare("getUserMedia") == 0) {
     if (!method_call.arguments()) {
       result->Error("Bad Arguments", "Null constraints arguments received");
       return;
     }
-    const Json::Value &constraints = *method_call.arguments();
-    GetUserMedia(&constraints, std::move(result));
+    const Json::Value &params = *method_call.arguments();
+    const Json::Value constraints = params["constraints"];
+    GetUserMedia(constraints, std::move(result));
   } else if (method_call.method_name().compare("getDisplayMedia") == 0) {
+    if (!method_call.arguments()) {
+      result->Error("Bad Arguments", "Null constraints arguments received");
+      return;
+    }
+    const Json::Value &params = *method_call.arguments();
+    const Json::Value constraints = params["constraints"];
     result->NotImplemented();
   } else if (method_call.method_name().compare("getSources") == 0) {
     GetSources(std::move(result));
@@ -58,7 +67,7 @@ void FlutterWebRTC::HandleMethodCall(
                     "createOffer() peerConnection is null");
       return;
     }
-    CreateOffer(&constraints, pc, std::move(result));
+    CreateOffer(constraints, pc, std::move(result));
   } else if (method_call.method_name().compare("createAnswer") == 0) {
     if (!method_call.arguments()) {
       result->Error("Bad Arguments", "Null constraints arguments received");
@@ -73,7 +82,7 @@ void FlutterWebRTC::HandleMethodCall(
                     "createAnswer() peerConnection is null");
       return;
     }
-    CreateAnswer(&constraints, pc, std::move(result));
+    CreateAnswer(constraints, pc, std::move(result));
   } else if (method_call.method_name().compare("addStream") == 0) {
     if (!method_call.arguments()) {
       result->Error("Bad Arguments", "Null arguments received");

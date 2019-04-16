@@ -13,10 +13,14 @@
 #include "flutter_video_renderer.h"
 
 namespace flutter_webrtc_plugin {
-
 using namespace libwebrtc;
 
-class FlutterWebRTCPlugin;
+class FlutterWebRTCPlugin : public flutter::Plugin {
+ public:
+  virtual flutter::BinaryMessenger *messenger() = 0;
+
+  virtual flutter::TextureRegistrar *textures() = 0;
+};
 
 class FlutterWebRTC : public FlutterWebRTCBase,
                       public FlutterVideoRendererManager,

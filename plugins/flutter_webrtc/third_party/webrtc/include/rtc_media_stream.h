@@ -4,13 +4,11 @@
 #include "rtc_types.h"
 #include "rtc_audio_track.h"
 #include "rtc_video_track.h"
-#include <string>
-#include <vector>
 
 namespace libwebrtc {
 
-typedef std::vector<scoped_refptr<RTCAudioTrack>> AudioTrackVector;
-typedef std::vector<scoped_refptr<RTCVideoTrack>> VideoTrackVector;
+typedef Vector<scoped_refptr<RTCAudioTrack>> AudioTrackVector;
+typedef Vector<scoped_refptr<RTCVideoTrack>> VideoTrackVector;
 
 class RTCMediaStream : public RefCountInterface {
  public:
@@ -41,7 +39,7 @@ class RTCMediaStream : public RefCountInterface {
   ~RTCMediaStream() {}
 };
 
-typedef std::vector<scoped_refptr<RTCMediaStream>> MediaStreamVector;
+typedef Vector<scoped_refptr<RTCMediaStream>> MediaStreamVector;
 
 };  // namespace libwebrtc
 

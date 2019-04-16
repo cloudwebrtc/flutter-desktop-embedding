@@ -39,17 +39,18 @@ class FlutterPeerConnection {
   FlutterPeerConnection(FlutterWebRTCBase *base) : base_(base) {}
 
   void CreateRTCPeerConnection(
-      const Json::Value *constraints,
+      const Json::Value& configuration,
+      const Json::Value& constraints,
       std::unique_ptr<MethodResult<Json::Value>> result);
 
   void RTCPeerConnectionClose(
       RTCPeerConnection *pc, const std::string &uuid,
       std::unique_ptr<MethodResult<Json::Value>> result);
 
-  void CreateOffer(const Json::Value *constraints, RTCPeerConnection *pc,
+  void CreateOffer(const Json::Value& constraints, RTCPeerConnection *pc,
                    std::unique_ptr<MethodResult<Json::Value>> result);
 
-  void CreateAnswer(const Json::Value *constraints, RTCPeerConnection *pc,
+  void CreateAnswer(const Json::Value& constraints, RTCPeerConnection *pc,
                     std::unique_ptr<MethodResult<Json::Value>> result);
 
   void SetLocalDescription(RTCSessionDescription *sdp, RTCPeerConnection *pc,
@@ -63,10 +64,6 @@ class FlutterPeerConnection {
 
   void GetStats(const std::string &track_id, RTCPeerConnection *pc,
                 std::unique_ptr<MethodResult<Json::Value>> result);
-
- private:
-  // bool ParseRTCConfiguration(const Json::Value &map);
-
  private:
   FlutterWebRTCBase *base_;
 };

@@ -4,14 +4,18 @@
 namespace flutter_webrtc_plugin {
 
 void FlutterPeerConnection::CreateRTCPeerConnection(
-    const Json::Value *constraints,
+    const Json::Value& configurationMap,
+    const Json::Value& constraintsMap,
     std::unique_ptr<MethodResult<Json::Value>> result) {
-  std::cout << " constraints = " << *constraints << std::endl;
-  base_->ParseConstraints(*constraints, &base_->configuration_);
+
+  std::cout << " configuration = " << configurationMap << std::endl;
+  base_->ParseRTCConfiguration(configurationMap, base_->configuration_);
+  std::cout << " constraints = " << constraintsMap << std::endl;
+  scoped_refptr<RTCMediaConstraints> constraints = base_->ParseMediaConstraints(constraintsMap);
 
   std::string uuid = base_->GenerateUUID();
   scoped_refptr<RTCPeerConnection> pc =
-      base_->factory_->Create(base_->configuration_);
+      base_->factory_->Create(base_->configuration_, constraints);
   base_->peerconnections_[uuid] = pc;
 
   std::string event_channel =
@@ -40,10 +44,10 @@ void FlutterPeerConnection::RTCPeerConnectionClose(
 }
 
 void FlutterPeerConnection::CreateOffer(
-    const Json::Value *constraints, RTCPeerConnection *pc,
+    const Json::Value& constraintsMap, RTCPeerConnection *pc,
     std::unique_ptr<MethodResult<Json::Value>> result) {
-  // TODO: Convert constraints to RTCOfferAnswerOptions
-  std::cout << " constraints = " << *constraints << std::endl;
+  scoped_refptr<RTCMediaConstraints> constraints =
+      base_->ParseMediaConstraints(constraintsMap);
   std::shared_ptr<MethodResult<Json::Value>> result_ptr(result.release());
   pc->CreateOffer(
       [result_ptr](const char *sdp, const char *type) {
@@ -54,13 +58,15 @@ void FlutterPeerConnection::CreateOffer(
       },
       [result_ptr](const char *error) {
         result_ptr->Error("createOfferFailed", error);
-      });
+      },
+      constraints);
 }
 
 void FlutterPeerConnection::CreateAnswer(
-    const Json::Value *constraints, RTCPeerConnection *pc,
+    const Json::Value& constraintsMap, RTCPeerConnection *pc,
     std::unique_ptr<MethodResult<Json::Value>> result) {
-  // TODO: Convert constraints to RTCOfferAnswerOptions
+  scoped_refptr<RTCMediaConstraints> constraints =
+      base_->ParseMediaConstraints(constraintsMap);
   std::shared_ptr<MethodResult<Json::Value>> result_ptr(result.release());
   pc->CreateAnswer(
       [result_ptr](const char *sdp, const char *type) {
@@ -71,7 +77,8 @@ void FlutterPeerConnection::CreateAnswer(
       },
       [result_ptr](const std::string &error) {
         result_ptr->Error("createAnswerFailed", error);
-      });
+      },
+      constraints);
 }
 
 void FlutterPeerConnection::SetLocalDescription(
@@ -79,8 +86,7 @@ void FlutterPeerConnection::SetLocalDescription(
     std::unique_ptr<MethodResult<Json::Value>> result) {
   std::shared_ptr<MethodResult<Json::Value>> result_ptr(result.release());
   pc->SetLocalDescription(
-      sdp->sdp(), sdp->type(),
-      [result_ptr]() { result_ptr->Success(nullptr); },
+      sdp->sdp(), sdp->type(), [result_ptr]() { result_ptr->Success(nullptr); },
       [result_ptr](const char *error) {
         result_ptr->Error("setLocalDescriptionFailed", error);
       });
@@ -91,8 +97,7 @@ void FlutterPeerConnection::SetRemoteDescription(
     std::unique_ptr<MethodResult<Json::Value>> result) {
   std::shared_ptr<MethodResult<Json::Value>> result_ptr(result.release());
   pc->SetRemoteDescription(
-      sdp->sdp(), sdp->type(),
-      [result_ptr]() { result_ptr->Success(nullptr); },
+      sdp->sdp(), sdp->type(), [result_ptr]() { result_ptr->Success(nullptr); },
       [result_ptr](const char *error) {
         result_ptr->Error("setRemoteDescriptionFailed", error);
       });
@@ -129,91 +134,8 @@ FlutterPeerConnectionObserver::FlutterPeerConnectionObserver(
         return nullptr;
       }};
   event_channel_->SetStreamHandler(stream_handler);
+  peerconnection->RegisterRTCPeerConnectionObserver(this);
 }
-/*
-bool FlutterPeerConnection::ParseRTCConfiguration(const Json::Value &map) {
-
-  ConstraintsArray iceServersArray = null;
-  if (map != null) {
-    iceServersArray = map.getArray("iceServers");
-  }
-  List<PeerConnection.IceServer> iceServers = createIceServers(iceServersArray);
-  PeerConnection.RTCConfiguration conf =
-      new PeerConnection.RTCConfiguration(iceServers);
-  if (map == null) {
-    return conf;
-  }
-
-  // iceTransportPolicy (public api)
-  if (map.hasKey("iceTransportPolicy") &&
-      map.getType("iceTransportPolicy") == ObjectType.String) {
-    final String v = map.getString("iceTransportPolicy");
-    if (v != null) {
-      switch (v) {
-        case "all":  // public
-          conf.iceTransportsType = PeerConnection.IceTransportsType.ALL;
-          break;
-        case "relay":  // public
-          conf.iceTransportsType = PeerConnection.IceTransportsType.RELAY;
-          break;
-        case "nohost":
-          conf.iceTransportsType = PeerConnection.IceTransportsType.NOHOST;
-          break;
-        case "none":
-          conf.iceTransportsType = PeerConnection.IceTransportsType.NONE;
-          break;
-      }
-    }
-  }
-
-  // bundlePolicy (public api)
-  if (map.hasKey("bundlePolicy") &&
-      map.getType("bundlePolicy") == ObjectType.String) {
-    final String v = map.getString("bundlePolicy");
-    if (v != null) {
-      switch (v) {
-        case "balanced":  // public
-          conf.bundlePolicy = PeerConnection.BundlePolicy.BALANCED;
-          break;
-        case "max-compat":  // public
-          conf.bundlePolicy = PeerConnection.BundlePolicy.MAXCOMPAT;
-          break;
-        case "max-bundle":  // public
-          conf.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
-          break;
-      }
-    }
-  }
-
-  // rtcpMuxPolicy (public api)
-  if (map.hasKey("rtcpMuxPolicy") &&
-      map.getType("rtcpMuxPolicy") == ObjectType.String) {
-    final String v = map.getString("rtcpMuxPolicy");
-    if (v != null) {
-      switch (v) {
-        case "negotiate":  // public
-          conf.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.NEGOTIATE;
-          break;
-        case "require":  // public
-          conf.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE;
-          break;
-      }
-    }
-  }
-
-  // FIXME: peerIdentity of type DOMString (public api)
-  // FIXME: certificates of type sequence<RTCCertificate> (public api)
-
-  // iceCandidatePoolSize of type unsigned short, defaulting to 0
-  if (map.hasKey("iceCandidatePoolSize") &&
-      map.getType("iceCandidatePoolSize") == ObjectType.Number) {
-    final int v = map.getInt("iceCandidatePoolSize");
-    if (v > 0) {
-      conf.iceCandidatePoolSize = v;
-    }
-  }
-  return conf;
-}*/
 
 static const char *iceConnectionStateString(RTCIceConnectionState state) {
   switch (state) {

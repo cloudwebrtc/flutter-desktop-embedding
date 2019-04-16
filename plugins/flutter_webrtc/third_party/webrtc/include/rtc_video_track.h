@@ -7,17 +7,15 @@
 #include "rtc_video_frame.h"
 #include "rtc_video_renderer.h"
 
-#include <vector>
-
 namespace libwebrtc {
 
 class RTCVideoTrack : public RTCMediaTrack {
  public:
     virtual void AddRenderer(
-      RTCVideoRenderer<RTCVideoFrame>* renderer) = 0;
+      RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) = 0;
 
   virtual void RemoveRenderer(
-      RTCVideoRenderer<RTCVideoFrame>* renderer)  = 0;
+        RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) = 0;
 
  protected:
   ~RTCVideoTrack() {}

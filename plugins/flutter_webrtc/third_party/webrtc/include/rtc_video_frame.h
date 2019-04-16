@@ -5,26 +5,25 @@
 
 namespace libwebrtc {
 
-class RTCVideoFrame {
+class RTCVideoFrame : public RefCountInterface {
  public:
   enum class Type { kARGB, kBGRA, kABGR, kRGBA };
 
  public:
-  LIB_WEBRTC_API static RTCVideoFrame* Create(int width,
-                                              int height,
-                                              const uint8_t* buffer,
-                                              int length);
+  LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame>
+  Create(int width, int height, const uint8_t* buffer, int length);
 
-  LIB_WEBRTC_API static RTCVideoFrame* Create(int width,
-                                              int height,
-                                              const uint8_t* data_y,
-                                              int stride_y,
-                                              const uint8_t* data_u,
-                                              int stride_u,
-                                              const uint8_t* data_v,
-                                              int stride_v);
+  LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame> Create(
+      int width,
+      int height,
+      const uint8_t* data_y,
+      int stride_y,
+      const uint8_t* data_u,
+      int stride_u,
+      const uint8_t* data_v,
+      int stride_v);
 
-  virtual void Release() = 0;
+  virtual scoped_refptr<RTCVideoFrame> Copy() = 0;
 
   // The resolution of the frame in pixels. For formats where some planes are
   // subsampled, this is the highest-resolution plane.
@@ -42,7 +41,11 @@ class RTCVideoFrame {
   virtual int StrideU() const = 0;
   virtual int StrideV() const = 0;
 
-  virtual int ConvertToARGB(Type type, uint8_t* dst_argb, int dst_stride_argb) = 0;
+  virtual int ConvertToARGB(Type type,
+                            uint8_t* dst_argb,
+                            int dst_stride_argb,
+                            int dest_width,
+                            int dest_height) = 0;
 
  protected:
   virtual ~RTCVideoFrame() {}

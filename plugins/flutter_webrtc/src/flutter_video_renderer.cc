@@ -2,12 +2,11 @@
 
 namespace flutter_webrtc_plugin {
 FlutterVideoRenderer::FlutterVideoRenderer(TextureRegistrar *registrar,
-                                           BinaryMessenger *messenger,
-                                           int64_t texture_id)
-    : registrar_(registrar), texture_id_(texture_id) {
+                                           BinaryMessenger *messenger)
+    : registrar_(registrar) {
+  texture_id_ = registrar_->RegisterTexture(this);
   std::string event_channel =
-      "cloudwebrtc.com/WebRTC/Texture" + std::to_string(texture_id);
-
+      "cloudwebrtc.com/WebRTC/Texture" + std::to_string(texture_id_);
   event_channel_.reset(new EventChannel<Json::Value>(
       messenger, event_channel, &JsonMethodCodec::GetInstance(),
       &JsonMessageCodec::GetInstance()));
@@ -24,18 +23,42 @@ FlutterVideoRenderer::FlutterVideoRenderer(TextureRegistrar *registrar,
       }};
   event_channel_->SetStreamHandler(stream_handler);
 }
+
 std::shared_ptr<uint8_t> FlutterVideoRenderer::CopyTextureBuffer(
     size_t width, size_t height) {
+  if (dest_frame_size_.width != width || dest_frame_size_.height != height) {
+    size_t buffer_size = (width * height) * (32 >> 3);
+    frame_buffer_.reset(new uint8_t[buffer_size]);
+    dest_frame_size_ = {width, height};
+  }
+  frame_->ConvertToARGB(RTCVideoFrame::Type::kABGR, frame_buffer_.get(), 0,
+                        (int)width, (int)height);
   return frame_buffer_;
 }
 
-void FlutterVideoRenderer::OnFrame(RTCVideoFrame &frame) {
-  if (size_.width != frame.width() || size_.height != frame.height()) {
-    size_t buffer_size = frame.width() * frame.height() * (32 >> 3);
-    frame_buffer_.reset(new uint8_t[buffer_size]);
-    size_ = {frame.width(), frame.height()};
+void FlutterVideoRenderer::OnFrame(scoped_refptr<RTCVideoFrame> frame) {
+
+  if (!first_frame_rendered && event_sink_) {
+      Json::Value params;
+      params["event"] = "didFirstFrameRendered";
+      (*event_sink_)(&params);
+      first_frame_rendered = true;
   }
-  frame.ConvertToARGB(RTCVideoFrame::Type::kRGBA, frame_buffer_.get(), 0);
+ 
+  if (frame_size_.width != frame->width() ||
+      frame_size_.height != frame->height()) {
+    if (event_sink_) {
+      Json::Value params;
+      params["event"] = "didTextureChangeVideoSize";
+      params["id"] = texture_id_;
+      params["width"] = 0.0 + frame_size_.width;
+      params["height"] = 0.0 + frame_size_.height;
+      (*event_sink_)(&params);
+    }
+    frame_size_ = {(size_t)frame->width(), (size_t)frame->height()};
+  }
+
+  frame_ = frame;
   registrar_->MarkTextureFrameAvailable(texture_id_);
 }
 
@@ -43,6 +66,9 @@ void FlutterVideoRenderer::SetVideoTrack(RTCVideoTrack *track) {
   if (track_ != track) {
     if (track_) track_->RemoveRenderer(this);
     track_ = track;
+    frame_size_ = {0, 0};
+    dest_frame_size_ = {0, 0};
+    first_frame_rendered = false;
     if (track_) track_->AddRenderer(this);
   }
 }
@@ -53,11 +79,13 @@ FlutterVideoRendererManager::FlutterVideoRendererManager(
 
 void FlutterVideoRendererManager::CreateVideoRendererTexture(
     std::unique_ptr<MethodResult<Json::Value>> result) {
-  int64_t texture_id = ++texture_counter_;
-  std::unique_ptr<FlutterVideoRenderer> texture(new FlutterVideoRenderer(
-      base_->textures_, base_->messenger_, texture_id));
-  base_->textures_->RegisterTexture(texture.get());
+  std::unique_ptr<FlutterVideoRenderer> texture(
+      new FlutterVideoRenderer(base_->textures_, base_->messenger_));
+  int64_t texture_id = texture->texture_id();
   renderers_[texture_id] = std::move(texture);
+  Json::Value params;
+  params["textureId"] = texture_id;
+  result->Success(&params);
 }
 
 void FlutterVideoRendererManager::SetMediaStream(int64_t texture_id,
