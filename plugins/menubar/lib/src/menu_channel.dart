@@ -14,18 +14,92 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 import 'menu_item.dart';
 
-// Plugin channel constants. See common/channel_constants.h for details.
+/// Whether or not the menu item is a divider, as a boolean. If true, no other
+/// The name of the plugin's platform channel.
 const String _kMenuChannelName = 'flutter/menubar';
+
+/// The method name to instruct the native plugin to set the menu.
+//
+/// The argument to this method will be an array of map representations
+/// of menus that should be set as top-level menu items.
 const String _kMenuSetMethod = 'Menubar.SetMenu';
+
+/// The method name for the Dart-side callback called when a menu item is
+/// selected.
+//
+/// The argument to this method must be the ID of the selected menu item, as
+/// provided in the kIdKey field in the kMenuSetMethod call.
 const String _kMenuItemSelectedCallbackMethod = 'Menubar.SelectedCallback';
+
+// Keys for the map representations of menus sent to kMenuSetMethod.
+
+/// The ID of the menu item, as an integer. If present, this indicates that the
+/// menu item should trigger a kMenuItemSelectedCallbackMethod call when
+/// selected.
 const String _kIdKey = 'id';
+
+/// The label that should be displayed for the menu, as a string.
 const String _kLabelKey = 'label';
+
+/// The string corresponding to the shortcut key equivalent without modifiers.
+///
+/// When menu support moves into Flutter itself, this will likely use keyId.
+/// That's not useable for this plugin-based prototype however, since keyId is
+/// not stable.
+const String _kShortcutKeyEquivalent = 'keyEquivalent';
+
+/// An alternative to _kShortcutKeyEquivalent for keys that have no string
+/// equivalent. Only this or _kShortcutKeyEquivalent should be specified.
+///
+/// This is a partial workaround for the lack of keyId discussed above, to
+/// handle common shortcut keys that _kShortcutKeyEquivalent can't represent.
+///
+/// See _ShortcutSpecialKeys for possible values.
+const String _kShortcutSpecialKey = 'specialKey';
+
+/// The modifier flags to apply to the shortcut key.
+///
+/// The value is an int representing a flag set; see below for possible values.
+const String _kShortcutKeyModifiers = 'keyModifiers';
+
+/// Whether or not the menu item should be enabled, as a boolean. If not present
+/// the defualt is to enabled the item.
 const String _kEnabledKey = 'enabled';
+
+/// Menu items that should be shown as a submenu of this item, as an array.
 const String _kChildrenKey = 'children';
+
+/// Whether or not the menu item is a divider, as a boolean. If true, no other
+/// keys will be present.
 const String _kDividerKey = 'isDivider';
+
+// Values for _kShortcutKeyModifiers.
+const int _shortcutModifierMeta = 1 << 0;
+const int _shortcutModifierShift = 1 << 1;
+const int _shortcutModifierAlt = 1 << 2;
+const int _shortcutModifierControl = 1 << 3;
+
+/// Values for _kShortcutSpecialKey.
+final _shortcutSpecialKeyValues = <LogicalKeyboardKey, int>{
+  LogicalKeyboardKey.f1: 1,
+  LogicalKeyboardKey.f2: 2,
+  LogicalKeyboardKey.f3: 3,
+  LogicalKeyboardKey.f4: 4,
+  LogicalKeyboardKey.f5: 5,
+  LogicalKeyboardKey.f6: 6,
+  LogicalKeyboardKey.f7: 7,
+  LogicalKeyboardKey.f8: 8,
+  LogicalKeyboardKey.f9: 9,
+  LogicalKeyboardKey.f10: 10,
+  LogicalKeyboardKey.f11: 11,
+  LogicalKeyboardKey.f12: 12,
+  LogicalKeyboardKey.backspace: 13,
+  LogicalKeyboardKey.delete: 14,
+};
 
 /// A singleton object that handles the interaction with the menu bar platform
 /// channel.
@@ -35,8 +109,7 @@ class MenuChannel {
     _platformChannel.setMethodCallHandler(_callbackHandler);
   }
 
-  final MethodChannel _platformChannel =
-      const MethodChannel(_kMenuChannelName, const JSONMethodCodec());
+  final MethodChannel _platformChannel = const MethodChannel(_kMenuChannelName);
 
   /// Map from unique identifiers assigned by this class to the callbacks for
   /// those menu items.
@@ -64,7 +137,7 @@ class MenuChannel {
     try {
       _updateInProgress = true;
       await _platformChannel.invokeMethod(
-          _kMenuSetMethod, _jsonRepresentationForMenus(menus));
+          _kMenuSetMethod, _channelRepresentationForMenus(menus));
       _updateInProgress = false;
     } on PlatformException catch (e) {
       print('Platform exception setting menu: ${e.message}');
@@ -77,16 +150,17 @@ class MenuChannel {
   /// As a side-effect, repopulates _selectionCallbacks with a mapping from
   /// the IDs assigned to any menu item with a selection handler to the
   /// callback that should be triggered.
-  List<dynamic> _jsonRepresentationForMenus(List<Submenu> menus) {
+  List<dynamic> _channelRepresentationForMenus(List<Submenu> menus) {
     _selectionCallbacks.clear();
     _nextMenuItemId = 1;
 
-    return menus.map(_jsonRepresentationForMenuItem).toList();
+    return menus.map(_channelRepresentationForMenuItem).toList();
   }
 
-  /// Returns the JSON representation of [item] suitable for passing over the
+  /// Returns a representation of [item] suitable for passing over the
   /// platform channel to the native plugin.
-  Map<String, dynamic> _jsonRepresentationForMenuItem(AbstractMenuItem item) {
+  Map<String, dynamic> _channelRepresentationForMenuItem(
+      AbstractMenuItem item) {
     final representation = <String, dynamic>{};
     if (item is MenuDivider) {
       representation[_kDividerKey] = true;
@@ -94,13 +168,16 @@ class MenuChannel {
       representation[_kLabelKey] = item.label;
       if (item is Submenu) {
         representation[_kChildrenKey] =
-            _jsonRepresentationForMenu(item.children);
+            _channelRepresentationForMenu(item.children);
       } else if (item is MenuItem) {
         if (item.onClicked != null) {
           representation[_kIdKey] = _storeMenuCallback(item.onClicked);
         }
         if (!item.enabled) {
           representation[_kEnabledKey] = false;
+        }
+        if (item.shortcut != null) {
+          _addShortcutToRepresentation(item.shortcut, representation);
         }
       } else {
         throw ArgumentError(
@@ -110,9 +187,9 @@ class MenuChannel {
     return representation;
   }
 
-  /// Returns the JSON representation of [menu] suitable for passing over the
+  /// Returns the representation of [menu] suitable for passing over the
   /// platform channel to the native plugin.
-  List<dynamic> _jsonRepresentationForMenu(List<AbstractMenuItem> menu) {
+  List<dynamic> _channelRepresentationForMenu(List<AbstractMenuItem> menu) {
     final menuItemRepresentations = [];
     // Dividers are only allowed after non-divider items (see ApplicationMenu).
     var skipNextDivider = true;
@@ -122,13 +199,56 @@ class MenuChannel {
         continue;
       }
       skipNextDivider = isDivider;
-      menuItemRepresentations.add(_jsonRepresentationForMenuItem(menuItem));
+      menuItemRepresentations.add(_channelRepresentationForMenuItem(menuItem));
     }
     // If the last item is a divider, remove it (see ApplicationMenu).
     if (skipNextDivider && menuItemRepresentations.isNotEmpty) {
       menuItemRepresentations.removeLast();
     }
     return menuItemRepresentations;
+  }
+
+  /// Populates [channelRepresentation] with the platform channel representation
+  /// of [shortcut], using [_kShortcutKeyEquivalent], [_kShortcutSpecialKey],
+  /// and/or [_kShortcutKeyModifiers].
+  void _addShortcutToRepresentation(
+      LogicalKeySet shortcut, Map<String, dynamic> channelRepresentation) {
+    var hasNonModifierKey = false;
+    var modifiers = 0;
+    for (final key in shortcut.keys) {
+      if (key == LogicalKeyboardKey.meta) {
+        modifiers |= _shortcutModifierMeta;
+      } else if (key == LogicalKeyboardKey.shift) {
+        modifiers |= _shortcutModifierShift;
+      } else if (key == LogicalKeyboardKey.alt) {
+        modifiers |= _shortcutModifierAlt;
+      } else if (key == LogicalKeyboardKey.control) {
+        modifiers |= _shortcutModifierControl;
+      } else {
+        if (hasNonModifierKey) {
+          throw ArgumentError('Invalid menu item shortcut: $shortcut\n'
+              'Menu items must have exactly one non-modifier key.');
+        }
+
+        if (key.keyLabel != null) {
+          channelRepresentation[_kShortcutKeyEquivalent] = key.keyLabel;
+        } else {
+          final specialKey = _shortcutSpecialKeyValues[key];
+          if (specialKey == null) {
+            throw ArgumentError('Unsupported menu shortcut key: $key\n'
+                'Please add this key to the special key mapping.');
+          }
+          channelRepresentation[_kShortcutSpecialKey] = specialKey;
+        }
+        hasNonModifierKey = true;
+      }
+    }
+
+    if (!hasNonModifierKey) {
+      throw ArgumentError('Invalid menu item shortcut: $shortcut\n'
+          'Menu items must have exactly one non-modifier key.');
+    }
+    channelRepresentation[_kShortcutKeyModifiers] = modifiers;
   }
 
   /// Stores [callback] for use plugin callback handling, returning the ID

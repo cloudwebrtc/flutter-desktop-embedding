@@ -1,22 +1,18 @@
 name: example_flutter
 description: An example project for flutter-desktop-embedding.
 
+environment:
+  sdk: '>=2.0.0 <3.0.0'
+  # The example interacts with build scripts on the Flutter side that are not
+  # yet stable, so it requires a very recent version of Flutter.
+  # This version will increase regularly as the build scripts change.
+  flutter: '>=1.5.9-pre.270'
+
 dependencies:
   flutter:
     sdk: flutter
 
   cupertino_icons: ^0.1.0
-
-  # Desktop embedder plugins.
-  # Note: In an actual project, these paths would include the
-  # path from your application to the flutter_desktop_embedding
-  # checkout.
-  color_panel:
-    path: ../plugins/color_panel
-  file_chooser:
-    path: ../plugins/file_chooser
-  menubar:
-    path: ../plugins/menubar
 
 dev_dependencies:
   flutter_test:
@@ -25,6 +21,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # See https://github.com/flutter/flutter/wiki/Desktop-shells#fonts
   fonts:
     - family: Roboto
       fonts:

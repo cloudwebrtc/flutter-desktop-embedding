@@ -1,4 +1,4 @@
-# Copyright 2018 Google LLC
+# Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,68 +12,129 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This Makefile serves as an example of building a plugin using Make.
-# It is not actually used in the normal build process, since GN is used
-# to build this project's plugins.
-
 # Example-specific variables.
-# To modify this Makefile for a different plugin, these are the values
+# To modify this Makefile for a different application, these are the values
 # that are mostly likely to need to be changed.
 
-# The location of the flutter-desktop-embedding repository.
-FDE_ROOT=$(CURDIR)/../../..
-# The filename of the plugin library to build.
-LIBRARY_OUT=libflutter_embedder_color_panel.so
-# The C++ code for the plugin.
-COMMON_DIR=$(CURDIR)/../common
-HEADERS=$(shell find include/ $(COMMON_DIR)/ -type f -name '*.h')
-SOURCES=$(shell find src/ $(COMMON_DIR)/ -type f -name '*.cc')
-# The include path(s) needed by your plugin code, other than for the
-# embedder library headers. This project uses project-root-relative
-# paths, so only includes the project root.
-PLUGIN_INCLUDE_DIR=$(FDE_ROOT)
-# System-level shared libraries used by your plugin.
-LIBRARY_DEPENDENCIES=gtk+-3.0 jsoncpp
+# The name of the plugin.
+# The primary source file is assumed to be $(PLUGIN_NAME).cc, with
+# $(PLUGIN_NAME).h as the public header meant for inclusion by the application.
+PLUGIN_NAME=color_panel_plugin
+# Any files other than the plugin class files that need to be compiled.
+EXTRA_SOURCES=
+# Extra flags (e.g., for library dependencies).
+SYSTEM_LIBRARIES=gtk+-3.0
+EXTRA_CXXFLAGS=
+EXTRA_CPPFLAGS=-I../../.. \
+	$(patsubst -I%,-isystem%,$(shell pkg-config --cflags $(SYSTEM_LIBRARIES)))
+EXTRA_LDFLAGS=$(shell pkg-config --libs $(SYSTEM_LIBRARIES))
 
+# Default build type. For a release build, set BUILD=release.
+# Currently this only sets NDEBUG, which is used to control the flags passed
+# to the Flutter engine in the example shell, and not the complation settings
+# (e.g., optimization level) of the C++ code.
+BUILD=debug
 
-# For dependency on the embedder shared library.
-GN_OUT_DIR=$(FDE_ROOT)/out
-EMBEDDER_LIBRARY_HEADER_DIR=$(GN_OUT_DIR)/include
-EMBEDDER_LIBRARY_DIR=$(GN_OUT_DIR)
-EMBEDDER_LIB_NAME=flutter_embedder
-EMBEDDER_LIB_FILE=$(EMBEDDER_LIBRARY_DIR)/lib$(EMBEDDER_LIB_NAME).so
+# Dependency locations
+# Default to building in the plugin directory.
+OUT_DIR=$(CURDIR)/../build/linux
+# Sharing an OUT_DIR will be common, so use a subdirectory for intermediates.
+PLUGIN_OUT_DIR=$(OUT_DIR)/$(PLUGIN_NAME)
+OBJ_DIR=$(PLUGIN_OUT_DIR)/obj
+FLUTTER_CACHE_DIR=$(PLUGIN_OUT_DIR)/flutter
 
-# Tools
-TOOLS_DIR=$(FDE_ROOT)/tools
-GN_WRAPPER=$(TOOLS_DIR)/gn_dart
-NINJA_BIN=ninja
+# Flutter library
+FLUTTER_LIB_NAME=flutter_linux
+FLUTTER_LIB=$(FLUTTER_CACHE_DIR)/lib$(FLUTTER_LIB_NAME).so
 
+# If FLUTTER_ROOT is set, use that version of Flutter. Otherwise, assume that
+# the flutter tool is in the path.
+ifeq ($(strip $(FLUTTER_ROOT)),)
+FLUTTER_BIN=flutter
+else
+FLUTTER_BIN=$(FLUTTER_ROOT)/bin/flutter
+endif
 
-CXX=g++ -std=c++14
-CXXFLAGS= -Wall -Werror -shared -fPIC -fvisibility=hidden \
-	-I$(PLUGIN_INCLUDE_DIR) \
-	-I$(EMBEDDER_LIBRARY_HEADER_DIR) \
-	-DCOLOR_PANEL_PLUGIN_IMPL \
-	$(shell pkg-config --cflags $(LIBRARY_DEPENDENCIES))
-LDFLAGS= -L$(EMBEDDER_LIBRARY_DIR) \
-	$(shell pkg-config --libs $(LIBRARY_DEPENDENCIES)) \
-	-l$(EMBEDDER_LIB_NAME) \
-	-Wl,-rpath=$(EMBEDDER_LIBRARY_DIR)
+# Unpack configuration.
+# TODO: Revisit how this is managed, either by having plugins builds always use
+# an existing cache provided to the build, or moving logic into the tool.
+FLUTTER_UNPACK_ARGS=--target-platform=linux-x64 \
+	--cache-dir="$(FLUTTER_CACHE_DIR)"
+ifneq ($(strip $(LOCAL_ENGINE)),)
+FLUTTER_UNPACK_ARGS+= --local-engine="$(LOCAL_ENGINE)"
+endif
+ifneq ($(strip $(FLUTTER_ENGINE)),)
+FLUTTER_UNPACK_ARGS+= --local-engine-src-path="$(FLUTTER_ENGINE)"
+endif
+
+# Add relevant code from the wrapper library, which is intended to be statically
+# built into the plugin.
+# Use abspath for the wrapper root, which can contain relative paths; the
+# intermediate build files will be based on the source path, which will cause
+# issues if they start with one or more '../'s.
+WRAPPER_ROOT=$(abspath $(FLUTTER_CACHE_DIR)/cpp_client_wrapper)
+# TODO: Once JSON codec files are merged, make a PLUGIN_CODEC variable in the
+# top section. For now, using JSON codec would require changes here.
+WRAPPER_SOURCES= \
+	$(WRAPPER_ROOT)/engine_method_result.cc \
+	$(WRAPPER_ROOT)/plugin_registrar.cc \
+	$(WRAPPER_ROOT)/standard_codec.cc
+
+# Use abspath for extra sources, which may also contain relative paths (see
+# note above about WRAPPER_ROOT).
+SOURCES=$(PLUGIN_NAME).cc $(WRAPPER_SOURCES) $(abspath $(EXTRA_SOURCES))
+PUBLIC_HEADER=$(PLUGIN_NAME).h
+
+WRAPPER_INCLUDE_DIR=$(WRAPPER_ROOT)/include
+INCLUDE_DIRS=$(FLUTTER_CACHE_DIR) $(WRAPPER_INCLUDE_DIR)
+
+# Build settings
+CXX=clang++
+CXXFLAGS.release=-DNDEBUG
+CXXFLAGS=-std=c++14 -Wall -Werror -fPIC -fvisibility=hidden \
+	-DFLUTTER_PLUGIN_IMPL $(CXXFLAGS.$(BUILD)) $(EXTRA_CXXFLAGS)
+CPPFLAGS=$(patsubst %,-I%,$(INCLUDE_DIRS)) $(EXTRA_CPPFLAGS)
+LDFLAGS=-shared -L$(FLUTTER_CACHE_DIR) -l$(FLUTTER_LIB_NAME) $(EXTRA_LDFLAGS)
+
+# Final output files that will be used by applications.
+LIBRARY_OUT=$(OUT_DIR)/lib$(PLUGIN_NAME).so
+HEADER_OUT=$(OUT_DIR)/include/$(PUBLIC_HEADER)
+
+# Intermediate files.
+OBJ_FILES=$(SOURCES:%.cc=$(OBJ_DIR)/%.o)
+DEPENDENCY_FILES=$(OBJ_FILES:%.o=%.d)
+
+# Targets
 
 .PHONY: all
-all: $(LIBRARY_OUT)
-$(LIBRARY_OUT): $(SOURCES) $(HEADERS) $(EMBEDDER_LIB_FILE)
-	$(CXX) $(CXXFLAGS) $(SOURCES) $(LDFLAGS) -o $@
+all: $(PLUGIN_NAME)
 
-$(EMBEDDER_LIB_FILE): | gnbuild
+.PHONY: $(PLUGIN_NAME)
+$(PLUGIN_NAME) : $(LIBRARY_OUT) $(HEADER_OUT)
 
-.PHONY: gnbuild
-gnbuild: $(GN_OUT_DIR)
-	$(NINJA_BIN) -C $(GN_OUT_DIR) $(FLUTTER_EMBEDDER_LIB_NAME) $(PLUGIN_NAMES)
+$(LIBRARY_OUT): $(OBJ_FILES)
+	mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $^ $(LDFLAGS) -o $@
 
-$(GN_OUT_DIR):
-	$(GN_WRAPPER) gen $(GN_OUT_DIR)
+$(HEADER_OUT): $(PUBLIC_HEADER)
+	mkdir -p $(@D)
+	cp $< $@
+
+$(WRAPPER_SOURCES) $(FLUTTER_LIB): | sync
+
+# This is a phony target because the flutter tool cannot describe
+# its inputs and outputs yet.
+.PHONY: sync
+sync:
+	$(FLUTTER_BIN) unpack $(FLUTTER_UNPACK_ARGS)
+
+-include $(DEPENDENCY_FILES)
+
+$(OBJ_DIR)/%.o : %.cc | sync
+	mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -MMD -c $< -o $@
 
 .PHONY: clean
 clean:
-	rm -f $(LIBRARY_OUT)
+	rm -f $(LIBRARY_OUT) $(HEADER_OUT)
+	rm -rf $(PLUGINOUT_DIR)
